@@ -15,6 +15,7 @@ This system helps hospitals manage patient records, doctors, appointments, and r
 ### 🩺 Doctor Management
 - Maintain doctor profiles and specializations
 - Manage availability and schedules
+- email keetu poi pannunga friends
 
 ### 📅 Appointment System
 - Book and manage appointments
