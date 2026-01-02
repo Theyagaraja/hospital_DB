@@ -45,7 +45,7 @@ This system helps hospitals manage patient records, doctors, appointments, and r
 
 ## 🖥️ Technologies Used
 - Frontend: HTML, CSS, JavaScript
-- Backend: (Add backend language here – e.g., Python / Node.js)
+- Backend: (Node.js)
 - Database: PostgreSQL / MySQL
 - QR Code generation library
 - Chart visualization libraries
