@@ -1,0 +1,473 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Hospital Dashboard</title>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    :root{
+      --bg: #f4fbff;
+      --card: #ffffff;
+      --muted: #4f6f88;
+      --primary: #1f8acb;
+      --accent: #2ca58d;
+      --danger: #ff6b6b;
+      --glass: rgba(255,255,255,0.85);
+      --radius: 12px;
+    }
+    html,body{height:100%;margin:0;font-family: "Segoe UI", Roboto, system-ui, Arial; background: linear-gradient(180deg,#1f3c5b 0%, #2c5364 160%); color:#0b2e4f;}
+    .wrap{max-width:1200px;margin:28px auto;padding:22px;border-radius:16px;background:var(--glass);box-shadow:0 18px 48px rgba(3,20,36,0.45);}
+    .header{display:flex;align-items:center;gap:12px;justify-content:space-between;margin-bottom:18px}
+    .brand{display:flex;align-items:center;gap:12px}
+    .logo{width:48px;height:48px;border-radius:10px;background:linear-gradient(135deg,var(--primary),#2bb3d8);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:18px}
+    h1{margin:0;font-size:20px}
+    .subtitle{color:var(--muted);font-size:13px}
+    .actions{display:flex;gap:8px;align-items:center}
+    .btn{background:var(--primary);color:#fff;padding:8px 12px;border-radius:10px;text-decoration:none;font-weight:600;border:none;cursor:pointer;box-shadow:0 6px 18px rgba(31,138,203,0.18)}
+    .btn.secondary{background:#fff;color:var(--primary);box-shadow:0 6px 18px rgba(15,76,110,0.06);border:1px solid rgba(31,138,203,0.06)}
+    .grid{display:grid;gap:16px}
+    .kpis{grid-template-columns:repeat(4,1fr);display:grid;margin-bottom:8px}
+    .card{background:var(--card);padding:16px;border-radius:var(--radius);box-shadow:0 8px 26px rgba(6,22,37,0.06);transition:transform .18s,box-shadow .18s;cursor:default}
+    .card:hover{transform:translateY(-6px);box-shadow:0 18px 40px rgba(6,22,37,0.12)}
+    .kpi-title{font-size:13px;color:var(--muted);margin-bottom:6px}
+    .kpi-value{font-size:22px;color:var(--primary);font-weight:700}
+    .kpi-sub{font-size:12px;color:#7f9fb8;margin-top:6px}
+
+    .charts{display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-top:10px}
+    .big-card{padding:12px}
+    .small-column{display:grid;gap:12px}
+    .chart-wrap{background:var(--card);padding:12px;border-radius:var(--radius);box-shadow:0 8px 26px rgba(6,22,37,0.05)}
+    canvas{max-width:100%}
+
+    .row-two{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
+    .disease-list{max-height:280px;overflow:auto;padding:8px}
+
+    /* responsive */
+    @media(max-width:1000px){
+      .kpis{grid-template-columns:repeat(2,1fr)}
+      .charts{grid-template-columns:1fr;align-items:stretch}
+      .row-two{grid-template-columns:1fr}
+    }
+
+    /* small helpers */
+    .muted{color:var(--muted);font-size:12px}
+    .clickable{cursor:pointer}
+    .highlight{color:var(--accent);font-weight:700}
+    .loader{display:inline-block;width:18px;height:18px;border-radius:50%;border:3px solid rgba(31,138,203,0.15);border-top-color:var(--primary);animation:spin 1s linear infinite}
+    @keyframes spin {100%{transform:rotate(360deg)}}
+    .legend-item{display:flex;align-items:center;gap:8px;padding:6px 4px}
+    .pill{display:inline-block;padding:6px 8px;border-radius:999px;background:#f3fbfe;color:var(--primary);font-weight:600;font-size:12px}
+    .month-select{padding:8px;border-radius:8px;border:1px solid #e2f0f8;background:white}
+    .footer-note{font-size:12px;color:#6b7f94;margin-top:12px}
+  </style>
+</head>
+<body>
+  <div class="wrap" role="main">
+    <div class="header">
+      <div class="brand">
+        <div class="logo">H</div>
+        <div>
+          <h1>Hospital Analytics Dashboard</h1>
+          <div class="subtitle">Operational insights • Interactive visualizations</div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <select id="rangeSelect" class="month-select" aria-label="Select range">
+          <option value="12">Last 12 months</option>
+          <option value="6">Last 6 months</option>
+          <option value="3">Last 3 months</option>
+        </select>
+        <button class="btn secondary" id="refreshBtn">Refresh</button>
+        <a class="btn" href="records.html" target="_blank" rel="noopener">View Records</a>
+      </div>
+    </div>
+
+    <div class="grid">
+      <!-- KPI Cards -->
+      <div class="kpis">
+        <div class="card clickable" id="card-total">
+          <div class="kpi-title">Total Patients (All time)</div>
+          <div class="kpi-value" id="kpiTotal">—</div>
+          <div class="kpi-sub" id="kpiTotalSub">month-wise breakdown below</div>
+        </div>
+
+        <div class="card clickable" id="card-this-month">
+          <div class="kpi-title">Patients This Month</div>
+          <div class="kpi-value" id="kpiMonth">—</div>
+          <div class="kpi-sub" id="kpiMonthSub">click to view records</div>
+        </div>
+
+        <div class="card clickable" id="card-gender">
+          <div class="kpi-title">Male vs Female</div>
+          <div class="kpi-value" id="kpiGender">—</div>
+          <div class="kpi-sub">interactive donut</div>
+        </div>
+
+        <div class="card clickable" id="card-top-disease">
+          <div class="kpi-title">Most Frequent (Current Month)</div>
+          <div class="kpi-value" id="kpiTopDisease">—</div>
+          <div class="kpi-sub" id="kpiTopSub"></div>
+        </div>
+      </div>
+
+      <!-- Top charts row -->
+      <div class="charts">
+        <div class="big-card chart-wrap">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <div>
+              <strong>Monthly Visits Trend</strong>
+              <div class="muted">Patient visits (by month)</div>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <button class="btn secondary" id="exportTrend">Export PNG</button>
+            </div>
+          </div>
+          <canvas id="monthChart" height="160"></canvas>
+        </div>
+
+        <div class="small-column">
+          <div class="chart-wrap">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+              <div><strong>Gender Ratio</strong><div class="muted">Male vs Female</div></div>
+              <button class="btn secondary" id="exportGender">PNG</button>
+            </div>
+            <canvas id="genderChart" height="120"></canvas>
+            <div id="genderLegend" style="margin-top:8px"></div>
+          </div>
+
+          <div class="chart-wrap">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+              <div><strong>Top Diseases</strong><div class="muted">Top 8 diseases</div></div>
+              <button class="btn secondary" id="exportDisease">PNG</button>
+            </div>
+            <canvas id="diseaseChart" height="120"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- secondary row -->
+      <div class="row-two">
+        <div class="card chart-wrap">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <div>
+              <strong>Most Frequent Disease (Selected Month)</strong>
+              <div class="muted">Choose a month to inspect</div>
+            </div>
+            <select id="monthPicker" class="month-select" aria-label="Select month"></select>
+          </div>
+          <div id="mostDiseaseCard" style="padding:8px;border-radius:8px;background:#fbfefe">
+            <div style="font-size:18px;color:var(--primary);font-weight:700" id="mostDiseaseName">—</div>
+            <div class="muted" id="mostDiseaseCount">—</div>
+          </div>
+        </div>
+
+        <div class="card chart-wrap">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <div>
+              <strong>Latest Appointments</strong>
+              <div class="muted">Most recent patient rows</div>
+            </div>
+            <div class="pill" id="latestCount">—</div>
+          </div>
+          <div id="latestTable" style="margin-top:8px;max-height:240px;overflow:auto;font-size:13px"></div>
+        </div>
+      </div>
+
+      <div class="footer-note">Tip: click on any chart element to open records filtered for that selection in a new tab.</div>
+    </div>
+  </div>
+
+<script>
+(async function(){
+  // Utilities
+  const $ = (sel) => document.querySelector(sel);
+  const getLastNMonths = (n) => {
+    const out = [];
+    const now = new Date();
+    for (let i = n-1; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const mm = String(d.getMonth()+1).padStart(2,'0');
+      out.push({ label: `${d.getFullYear()}-${mm}`, dateObj: d });
+    }
+    return out;
+  };
+
+  // Elements
+  const kpiTotal = $('#kpiTotal');
+  const kpiMonth = $('#kpiMonth');
+  const kpiGender = $('#kpiGender');
+  const kpiTopDisease = $('#kpiTopDisease');
+  const kpiTopSub = $('#kpiTopSub');
+  const monthChartCtx = document.getElementById('monthChart').getContext('2d');
+  const genderChartCtx = document.getElementById('genderChart').getContext('2d');
+  const diseaseChartCtx = document.getElementById('diseaseChart').getContext('2d');
+  const monthPicker = document.getElementById('monthPicker');
+  const latestTable = document.getElementById('latestTable');
+  const latestCountPill = document.getElementById('latestCount');
+
+  let monthChart, genderChart, diseaseChart;
+  let analyticsCache = null;
+
+  // Fetch analytics
+  async function fetchAnalytics(){
+    try {
+      const res = await fetch('/analytics');
+      if (!res.ok) throw new Error('Analytics fetch failed');
+      const j = await res.json();
+      analyticsCache = j;
+      return j;
+    } catch (e) {
+      console.error(e);
+      return null;
+    }
+  }
+
+  // Render helpers
+  function buildMonthLabels(n){
+    return getLastNMonths(n).map(x=>x.label);
+  }
+
+  function sum(arr){ return arr.reduce((a,b)=>a+b,0); }
+
+  // Build charts from analytics data
+  async function renderDashboard(rangeMonths = 12){
+    const data = analyticsCache || await fetchAnalytics();
+    if (!data) return;
+
+    // Prepare monthly labels
+    const labels = buildMonthLabels(rangeMonths);
+    const totalsMap = {};
+    (data.totalPerMonth || []).forEach(r => totalsMap[r.month] = r.count);
+    const totals = labels.map(l => totalsMap[l] || 0);
+
+    // KPI total overall
+    const totalAll = (data.totalPerMonth || []).reduce((a,b)=>a+b.count,0);
+    kpiTotal.textContent = totalAll;
+
+    // kpi this month (last label)
+    const lastLabel = labels[labels.length-1];
+    const thisMonthCount = totals[totals.length-1] || 0;
+    kpiMonth.textContent = thisMonthCount;
+
+    // gender KPI
+    const genders = (data.genderCounts || []);
+    const male = genders.find(g=>/male/i.test(g.gender))?.count || 0;
+    const female = genders.find(g=>/female/i.test(g.gender))?.count || 0;
+    const other = sum((genders||[]).map(x=>x.count)) - (male+female);
+    kpiGender.innerHTML = `${male} ? / ${female} ?${other ? ' / ' + other + ' other' : ''}`;
+
+    // Most frequent this month
+    const most = data.mostFrequentThisMonth;
+    kpiTopDisease.textContent = most ? `${most.disease} (${most.count})` : 'N/A';
+    kpiTopSub.textContent = most ? 'This month' : '';
+
+    // Populate monthPicker with available months (from analytics.totalPerMonth)
+    monthPicker.innerHTML = '';
+    const availMonths = buildMonthLabels(rangeMonths);
+    availMonths.slice().reverse().forEach(m=>{
+      const opt = document.createElement('option');
+      opt.value = m;
+      opt.textContent = m;
+      monthPicker.appendChild(opt);
+    });
+
+    // Latest appointments: fetch /patients and show top 6
+    let latest = [];
+    try {
+      const r = await fetch('/patients');
+      if (r.ok) latest = await r.json();
+    } catch(e){ console.warn('latest fetch failed', e) }
+    const recent = (latest || []).slice(0,6);
+    latestCountPill.textContent = (latest || []).length;
+    latestTable.innerHTML = recent.map(p=> {
+      const date = p.visit_date ? new Date(p.visit_date).toLocaleDateString() : '-';
+      return `<div style="padding:8px;border-bottom:1px dashed #eef6fb;display:flex;justify-content:space-between">
+        <div style="min-width:0">
+          <div style="font-weight:700">${escapeHtml(p.patient_name || '-')}</div>
+          <div class="muted" style="font-size:12px">${escapeHtml(p.disease || '-')}</div>
+        </div>
+        <div style="text-align:right">
+          <div class="muted" style="font-size:12px">${date}</div>
+          <div style="font-weight:600">${escapeHtml(p.phone_number || '-')}</div>
+        </div>
+      </div>`;
+    }).join('');
+
+    // Destroy existing charts to avoid duplicates
+    if (monthChart) monthChart.destroy();
+    if (genderChart) genderChart.destroy();
+    if (diseaseChart) diseaseChart.destroy();
+
+    // Month line chart
+    monthChart = new Chart(monthChartCtx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Patients',
+          data: totals,
+          fill: true,
+          backgroundColor: 'rgba(31,138,203,0.12)',
+          borderColor: 'rgba(31,138,203,1)',
+          pointBackgroundColor: '#fff',
+          tension: 0.3,
+          pointRadius: 5
+        }]
+      },
+      options: {
+        responsive:true,
+        plugins:{
+          legend:{display:false},
+          tooltip:{mode:'index',intersect:false}
+        },
+        scales:{ x:{ grid:{display:false} }, y:{ beginAtZero:true } },
+        onClick: (evt, elems) => {
+          if (!elems.length) return;
+          const idx = elems[0].index;
+          const month = labels[idx];
+          window.open(`records.html?month=${encodeURIComponent(month)}`, '_blank', 'noopener');
+        }
+      }
+    });
+
+    // Gender donut chart
+    const gLabels = (data.genderCounts || []).map(r=>r.gender);
+    const gData = (data.genderCounts || []).map(r=>r.count);
+    genderChart = new Chart(genderChartCtx, {
+      type:'doughnut',
+      data:{ labels: gLabels, datasets:[{ data: gData, backgroundColor:['#36A2EB','#FF6384','#FFCE56','#8ad16d'] }]},
+      options:{
+        responsive:true,
+        plugins:{
+          tooltip:{callbacks:{ label: ctx => `${ctx.label}: ${ctx.parsed} (${Math.round(ctx.parsed / sum(gData) *100)}%)`} }
+        },
+        onClick:(evt, elems) => {
+          if (!elems.length) return;
+          const idx = elems[0].index;
+          const gender = gLabels[idx];
+          window.open(`records.html?gender=${encodeURIComponent(gender)}`, '_blank', 'noopener');
+        }
+      }
+    });
+
+    // Build legend for gender
+    const genderLegend = document.getElementById('genderLegend');
+    genderLegend.innerHTML = '';
+    (gLabels||[]).forEach((lab,i)=>{
+      const dot = document.createElement('div');
+      dot.className = 'legend-item';
+      dot.innerHTML = `<div style="width:12px;height:12px;border-radius:3px;background:${genderChart.data.datasets[0].backgroundColor[i]};"></div><div style="font-size:13px">${lab} — <strong>${gData[i]}</strong></div>`;
+      genderLegend.appendChild(dot);
+    });
+
+    // Disease bar chart
+    const diseaseLabels = (data.diseaseDistribution || []).map(r=>r.disease);
+    const diseaseCounts = (data.diseaseDistribution || []).map(r=>r.count);
+    diseaseChart = new Chart(diseaseChartCtx, {
+      type:'bar',
+      data:{ labels:diseaseLabels, datasets:[{ label:'Cases', data:diseaseCounts, backgroundColor:'rgba(44,165,141,0.9)'}] },
+      options:{
+        responsive:true,
+        plugins:{ legend:{display:false}, tooltip:{mode:'nearest'} },
+        onClick:(evt, elems) => {
+          if (!elems.length) return;
+          const idx = elems[0].index;
+          const disease = diseaseLabels[idx];
+          window.open(`records.html?disease=${encodeURIComponent(disease)}`, '_blank', 'noopener');
+        },
+        scales:{ x:{ ticks:{autoSkip:false} }, y:{ beginAtZero:true } }
+      }
+    });
+
+    // Most frequent for selected month initial
+    updateMostFrequent(monthPicker.value || labels[labels.length-1], data);
+  }
+
+  function escapeHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') }
+
+  // When month picker changes: compute most frequent disease for that month
+  function updateMostFrequent(monthLabel, data){
+    if (!data) return;
+    // Make server provide month-wise disease counts if available — fallback: use diseaseDistribution and mostFrequentThisMonth
+    // Our /analytics returns mostFrequentThisMonth for current month; for selected month we attempt to find first matching row
+    if (!monthLabel) return;
+    // If selected is current month, use existing
+    const currentMonth = (data.mostFrequentThisMonth && data.mostFrequentThisMonth.disease) ? data.mostFrequentThisMonth : null;
+    if (monthLabel === (getLastLabels(1)[0] || '')) {
+      if (currentMonth) {
+        $('#mostDiseaseName').textContent = currentMonth.disease;
+        $('#mostDiseaseCount').textContent = `${currentMonth.count} case(s) this month`;
+      }
+      return;
+    }
+    // As we don't have server-side month-wise disease breakdown by month, request /analytics?month=YYYY-MM would be ideal.
+    // For now show fallback message and allow users to click charts for more detail.
+    $('#mostDiseaseName').textContent = 'Select month to view';
+    $('#mostDiseaseCount').textContent = 'Click a month in the trend chart to view disease details.';
+  }
+
+  // small helper to return last n labels (YYYY-MM)
+  function getLastLabels(n){
+    return getLastNMonths(n).map(o=>o.label);
+  }
+
+  // Wire UI events
+  document.getElementById('refreshBtn').addEventListener('click', async ()=>{
+    document.getElementById('refreshBtn').disabled = true;
+    document.getElementById('refreshBtn').textContent = 'Refreshing...';
+    await fetchAnalytics();
+    await renderDashboard(parseInt(document.getElementById('rangeSelect').value,10));
+    document.getElementById('refreshBtn').disabled = false;
+    document.getElementById('refreshBtn').textContent = 'Refresh';
+  });
+
+  document.getElementById('rangeSelect').addEventListener('change', (e)=>{
+    renderDashboard(parseInt(e.target.value,10));
+  });
+
+  // Month picker change
+  monthPicker.addEventListener('change', ()=>{
+    updateMostFrequent(monthPicker.value, analyticsCache);
+  });
+
+  // Export buttons (chart PNG)
+  document.getElementById('exportTrend').addEventListener('click', ()=>{
+    if (monthChart) downloadImageFromChart(monthChart, 'monthly-trend.png');
+  });
+  document.getElementById('exportGender').addEventListener('click', ()=>{
+    if (genderChart) downloadImageFromChart(genderChart, 'gender-donut.png');
+  });
+  document.getElementById('exportDisease').addEventListener('click', ()=>{
+    if (diseaseChart) downloadImageFromChart(diseaseChart, 'disease-bar.png');
+  });
+
+  function downloadImageFromChart(chart, filename){
+    const url = chart.toBase64Image();
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+  }
+
+  // clickable KPI cards open records
+  $('#card-total').addEventListener('click', ()=> window.open('records.html','_blank','noopener'));
+  $('#card-this-month').addEventListener('click', ()=> window.open(`records.html?month=${encodeURIComponent(getLastLabels(1)[0])}`,'_blank','noopener'));
+  $('#card-gender').addEventListener('click', ()=> window.open('records.html','_blank','noopener'));
+  $('#card-top-disease').addEventListener('click', ()=> {
+    const name = analyticsCache?.mostFrequentThisMonth?.disease;
+    if (name) window.open(`records.html?disease=${encodeURIComponent(name)}`,'_blank','noopener');
+    else window.open('records.html','_blank','noopener');
+  });
+
+  // Initial load
+  await fetchAnalytics();
+  await renderDashboard(12);
+
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,467 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>Hospital Management | Patient Dashboard</title>
+    <style>
+body {
+    font-family: "Segoe UI", Arial, sans-serif;
+    background: linear-gradient(135deg, #1f3c5b, #2c5364);
+    padding: 30px;
+}
+.container {
+    max-width: 1200px;
+    background: #f2f6f9;
+    margin: auto;
+    padding: 30px 40px;
+    border-radius: 14px;
+    box-shadow: 0 12px 28px rgba(0,0,0,0.35);
+}
+h2 {
+    text-align: center;
+    color: #0b2e4f;
+}
+.subtitle {
+    text-align: center;
+    color: #4f6f88;
+    margin-bottom: 30px;
+}
+.form-section {
+    background: #e9f0f6;
+    padding: 25px;
+    border-radius: 12px;
+    border: 1px solid #cdddea;
+}
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 18px;
+}
+input, select {
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid #b8cddd;
+    background: #f7fafc;
+}
+.actions {
+    text-align: center;
+    margin-top: 20px;
+}
+button {
+    padding: 10px 22px;
+    margin: 5px;
+    border-radius: 20px;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+}
+.btn-submit { background: #1f8acb; color: white; }
+.btn-reset { background: #dfe7ee; }
+.btn-view  { background: #27ae60; color: white; }
+
+/* appointment card */
+#appointmentCardWrap {
+  margin-top: 18px;
+  display: none;
+  justify-content: center;
+}
+.app-card {
+  background: white;
+  padding: 16px;
+  border-radius: 12px;
+  width: 420px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+  border: 1px solid #dceaf6;
+}
+.app-row { display:flex; justify-content:space-between; margin-bottom:8px; }
+.app-qr { margin-top:12px; text-align:center; }
+
+@media(max-width:768px){
+    .form-grid { grid-template-columns: 1fr; }
+    .app-card { width:100%; }
+}
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2>🏥 Smart Online Patient Appointment System</h2>
+    <div class="subtitle">Patient Registration Dashboard</div>
+    <div class="form-section">
+        <form id="patientForm">
+            <div class="form-grid">
+                <input id="patient_name" placeholder="Patient Name" maxlength="20" required>
+                <select id="gender" required>
+                    <option value="">Select Gender</option>
+                    <option>Male</option>
+                    <option>Female</option>
+                    <option>Other</option>
+                </select>
+                <input id="age" type="number" placeholder="Age">
+                <select id="disease" required>
+                    <option value="">Select Disease</option>
+                    <option>Fever</option>
+                    <option>Cold</option>
+                    <option>Flu</option>
+                    <option>Headache</option>
+                    <option>Migraine</option>
+                    <option>Diabetes</option>
+                    <option>Heart Problem</option>
+                    <option>Skin Allergy</option>
+                    <option>Lung Infection</option>
+                    <option>Asthma</option>
+                </select>
+                <select id="priority">
+                    <option value="">Visit Priority</option>
+                    <option>Normal</option>
+                    <option>Emergency</option>
+                </select>
+                <select id="time_slot">
+                    <option value="">Preferred Time Slot</option>
+                    <option>Morning</option>
+                    <option>Afternoon</option>
+                    <option>Evening</option>
+                </select>
+                <input id="bp" placeholder="Blood Pressure(e.g.120/80❤)" maxlength="7">
+                <input id="temp" placeholder="Temperature (°C🌡)" maxlength="5">
+                <input id="weight" placeholder="Weight (kg⚖)" maxlength="5">
+                <div style="display:flex; gap:8px; width:100%;">
+    <select id="country_code" style="padding:12px;border-radius:8px;">
+        <option value="+91" data-len="10">🇮🇳 India (+91)</option>
+        <option value="+1" data-len="10">🇺🇸 USA (+1)</option>
+        <option value="+44" data-len="10">🇬🇧 UK (+44)</option>
+        <option value="+61" data-len="9">🇦🇺 Australia (+61)</option>
+        <option value="+81" data-len="10">🇯🇵 Japan (+81)</option>
+        <option value="+49" data-len="11">🇩🇪 Germany (+49)</option>
+        <option value="+33" data-len="9">🇫🇷 France (+33)</option>
+        <option value="+971" data-len="9">🇦🇪 UAE (+971)</option>
+        <option value="+86" data-len="11">🇨🇳 China (+86)</option>
+        <option value="+7" data-len="10">🇷🇺 Russia (+7)</option>
+        <option value="+39" data-len="10">🇮🇹 Italy (+39)</option>
+        <option value="+34" data-len="9">🇪🇸 Spain (+34)</option>
+    </select>
+    <input id="phone"
+           placeholder="Phone Number"
+           required
+           style="flex:1;"
+    />
+</div>
+            </div>
+            <div class="actions">
+                <button class="btn-submit" id="saveBtn">Save Patient</button>
+                <button class="btn-reset" type="reset">Clear</button>
+                <button type="button" class="btn-view" onclick="viewRecords()">View Records</button>
+            </div>
+        </form>
+
+        <!-- Appointment card (appears after save) -->
+        <div id="appointmentCardWrap">
+          <div class="app-card" id="appointmentCard">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <div>
+                <strong>Appointment</strong><br>
+                <small id="apptDate"></small>
+              </div>
+              <div id="appointment-qr" style="width:110px;"></div>
+            </div>
+            <hr style="margin:10px 0;">
+            <div class="app-row"><div>Name</div><div id="apptName"></div></div>
+            <div class="app-row"><div>Phone</div><div id="apptPhone"></div></div>
+            <div class="app-row"><div>Disease</div><div id="apptDisease"></div></div>
+            <div class="app-row"><div>Priority</div><div id="apptPriority"></div></div>
+            <div style="text-align:center; margin-top:12px;">
+              <button id="downloadAppointmentPdf" style="padding:8px 12px;border-radius:10px;background:#1f8acb;color:#fff;border:none;cursor:pointer;">Download Appointment PDF</button>
+            </div>
+          </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- libs for PDF/QR -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+<script>
+/* --- KEEP YOUR ORIGINAL VALIDATIONS (unchanged) --- */
+const patient_name = document.getElementById("patient_name");
+const phone = document.getElementById("phone");
+const bp = document.getElementById("bp");
+const temp = document.getElementById("temp");
+const weight = document.getElementById("weight");
+const age = document.getElementById("age");
+const country_code = document.getElementById("country_code");
+const gender = document.getElementById("gender");
+const disease = document.getElementById("disease");
+const priority = document.getElementById("priority");
+const time_slot = document.getElementById("time_slot");
+
+patient_name.addEventListener("input",()=> patient_name.value = patient_name.value.replace(/[^a-zA-Z ]/g,""));
+phone.addEventListener("input",()=> phone.value = phone.value.replace(/[^0-9]/g,"").slice(0,10));
+bp.addEventListener("input",()=> bp.value = bp.value.replace(/[^0-9./]/g,""));
+temp.addEventListener("input",()=> temp.value = temp.value.replace(/[^0-9.]/g,""));
+weight.addEventListener("input",()=> weight.value = weight.value.replace(/[^0-9.]/g,""));
+age.addEventListener("input",()=> age.value = age.value.replace(/[^0-9]/g,"").slice(0,2));
+
+/* autofill edit (unchanged behavior) */
+window.onload = function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    if(urlParams.get("edit") === "1") {
+        const editData = JSON.parse(localStorage.getItem("editPatientData") || "{}");
+        if(editData && editData.patient_id) {
+            patient_name.value = editData.patient_name || "";
+            gender.value = editData.gender || "";
+            age.value = editData.age || "";
+            disease.value = editData.disease || "";
+            priority.value = editData.priority || "";
+            time_slot.value = editData.time_slot || "";
+            bp.value = editData.blood_pressure || "";
+            temp.value = editData.temperature || "";
+            weight.value = editData.weight_kg || "";
+
+            let num = editData.phone_number || "";
+            let found = false;
+            for(const opt of country_code.options) {
+                if(num.startsWith(opt.value)) {
+                    country_code.value = opt.value;
+                    phone.value = num.replace(opt.value, "");
+                    found = true;
+                    break;
+                }
+            }
+            if(!found) {
+                country_code.value = "+91";
+                phone.value = num;
+            }
+            window.editPatientId = editData.patient_id;
+            document.getElementById("saveBtn").textContent = "Update Patient";
+        }
+    }
+};
+
+/* Submit: save or edit (keeps validations unchanged) */
+document.getElementById("patientForm").addEventListener("submit", async e=>{
+    e.preventDefault();
+    const isEdit = !!window.editPatientId;
+    const payload = {
+        patient_name: patient_name.value,
+        gender: gender.value,
+        age: age.value,
+        disease: disease.value,
+        priority: priority.value,
+        time_slot: time_slot.value,
+        bp: bp.value,
+        temp: temp.value,
+        weight: weight.value,
+        phone: country_code.value + phone.value
+    };
+    if(isEdit){
+        const res = await fetch(`/patients/${window.editPatientId}`, {
+            method:"PUT",
+            headers:{ "Content-Type":"application/json" },
+            body: JSON.stringify({
+                patient_name: payload.patient_name,
+                gender: payload.gender,
+                age: payload.age,
+                disease: payload.disease,
+                priority: payload.priority,
+                time_slot: payload.time_slot,
+                blood_pressure: payload.bp,
+                temperature: payload.temp,
+                weight_kg: payload.weight,
+                phone_number: payload.phone
+            })
+        });
+        if(res.ok){
+            alert("Your appointment is edited");
+            localStorage.removeItem("editPatientData");
+            window.location.href = "records.html";
+        }else{
+            alert("Edit failed!");
+        }
+    }else{
+        try {
+            const res = await fetch("/add-patient",{
+                method:"POST",
+                headers:{ "Content-Type":"application/json" },
+                body: JSON.stringify(payload)
+            });
+            const body = await res.json();
+
+            // Build visible appointment object for PDF (only allowed fields)
+            const appointment = {
+              patient_id: body.patient_id,
+              patient_name: payload.patient_name,
+              disease: payload.disease,
+              time_slot: payload.time_slot,
+              priority: payload.priority
+            };
+
+            // Show preview card (optional) and wire download button
+            showAppointmentCard(appointment, body.qrToken);
+        } catch(err) {
+            console.error("POST error", err);
+            alert("Error saving appointment");
+        }
+    }
+});
+
+function viewRecords(){
+    window.location.href = "records.html";
+}
+
+/* Appointment card helpers (PDF + QR) */
+/* Keeps visible-only fields on the card; QR token is used only for QR generation and for scan lookup */
+function showAppointmentCard(appt, qrToken) {
+  const wrap = document.getElementById('appointmentCardWrap');
+  const card = document.getElementById('appointmentCard');
+  document.getElementById('apptName').textContent = appt.patient_name || '-';
+  document.getElementById('apptPhone').textContent = ''; // phone purposely not shown on preview card per your requirement
+  document.getElementById('apptDisease').textContent = appt.disease || '-';
+  document.getElementById('apptPriority').textContent = appt.priority || '-';
+  document.getElementById('apptDate').textContent = new Date().toLocaleString();
+
+  // Render QR (minimal info: server-provided token URL). Avoid embedding sensitive PHI directly.
+  const qrWrap = document.getElementById('appointment-qr');
+  qrWrap.innerHTML = '';
+  try {
+    const qrUrl = `${location.origin}/appointment/qr/${encodeURIComponent(qrToken)}`;
+    new QRCode(qrWrap, { text: qrUrl, width: 100, height: 100 });
+  } catch (err) {
+    console.warn('QR error', err);
+  }
+
+  wrap.style.display = 'flex';
+
+  // Wire PDF download button
+  const btn = document.getElementById('downloadAppointmentPdf');
+  btn.onclick = async () => {
+    try {
+      await generateAppointmentPdfAndDownload(appt, qrToken);
+    } catch (err) {
+      console.error('PDF error', err);
+      alert('Could not create PDF');
+    }
+  };
+}
+
+/* Robust PDF generation that waits for QR rendering and includes only visible fields + QR */
+async function generateAppointmentPdfAndDownload(appointment, qrToken) {
+  if (!appointment || !qrToken) {
+    console.error("Missing appointment or qrToken", appointment, qrToken);
+    alert("Unable to generate PDF: missing data");
+    return;
+  }
+
+  const qrUrl = `${location.origin}/appointment/qr/${encodeURIComponent(qrToken)}`;
+
+  // Create offscreen container for QR rendering
+  const tmp = document.createElement('div');
+  tmp.style.position = 'fixed';
+  tmp.style.left = '-9999px';
+  tmp.style.top = '-9999px';
+  document.body.appendChild(tmp);
+
+  // Create QR
+  new QRCode(tmp, {
+    text: qrUrl,
+    width: 220,
+    height: 220,
+    correctLevel: QRCode.CorrectLevel.H
+  });
+
+  // Wait until qrcodejs renders an <img> or <canvas>
+  const qrDataUrl = await (async function waitForQrDataUrl(timeoutMs = 3000) {
+    const start = Date.now();
+    while (Date.now() - start < timeoutMs) {
+      const img = tmp.querySelector('img');
+      if (img && img.src && img.src.indexOf('data:') === 0) {
+        return img.src;
+      }
+      const canvas = tmp.querySelector('canvas');
+      if (canvas) {
+        try {
+          const data = canvas.toDataURL('image/png');
+          if (data && data.indexOf('data:') === 0) return data;
+        } catch (e) { /* ignore */ }
+      }
+      await new Promise(r => setTimeout(r, 50));
+    }
+    return null;
+  })();
+
+  document.body.removeChild(tmp);
+
+  if (!qrDataUrl) {
+    console.error("QR generation failed or timed out");
+    alert("QR generation failed — cannot create PDF.");
+    return;
+  }
+
+  // Create PDF with jsPDF
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF({ unit: 'pt', format: 'a4' });
+
+  const marginLeft = 48;
+  let y = 60;
+  pdf.setFontSize(16);
+  pdf.setTextColor("#0b2e4f");
+  pdf.setFont(undefined, "bold");
+  pdf.text("Hospital Name", marginLeft, y);
+
+  y += 22;
+  pdf.setFontSize(12);
+  pdf.setTextColor("#4f6f88");
+  pdf.setFont(undefined, "normal");
+  pdf.text("Appointment Slip", marginLeft, y);
+
+  y += 26;
+  pdf.setFontSize(11);
+  pdf.setTextColor("#0b2e4f");
+  pdf.setFont(undefined, "bold");
+  pdf.text("Appointment ID:", marginLeft, y);
+  pdf.setFont(undefined, "normal");
+  pdf.text(String(appointment.patient_id || "-"), marginLeft + 140, y);
+
+  y += 18;
+  pdf.setFont(undefined, "bold");
+  pdf.text("Patient Name:", marginLeft, y);
+  pdf.setFont(undefined, "normal");
+  pdf.text(appointment.patient_name || "-", marginLeft + 140, y);
+
+  y += 18;
+  pdf.setFont(undefined, "bold");
+  pdf.text("Disease:", marginLeft, y);
+  pdf.setFont(undefined, "normal");
+  pdf.text(appointment.disease || "-", marginLeft + 140, y);
+
+  y += 18;
+  pdf.setFont(undefined, "bold");
+  pdf.text("Preferred Time Slot:", marginLeft, y);
+  pdf.setFont(undefined, "normal");
+  pdf.text(appointment.time_slot || "-", marginLeft + 140, y);
+
+  y += 18;
+  pdf.setFont(undefined, "bold");
+  pdf.text("Visit Priority:", marginLeft, y);
+  pdf.setFont(undefined, "normal");
+  pdf.text(appointment.priority || "-", marginLeft + 140, y);
+
+  y += 28;
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  pdf.setDrawColor(220, 230, 240);
+  pdf.line(marginLeft, y, pageWidth - marginLeft, y);
+
+  const qrSize = 140;
+  const qrX = pageWidth - marginLeft - qrSize;
+  const qrY = y + 20;
+  pdf.addImage(qrDataUrl, 'PNG', qrX, qrY, qrSize, qrSize);
+
+  pdf.setFontSize(9);
+  pdf.setTextColor("#5a6d80");
+  pdf.text("Scan the QR to view full appointment details (secure)", marginLeft, qrY + 40);
+
+  const filename = `appointment-${appointment.patient_id || 'appointment'}.pdf`;
+  pdf.save(filename);
+}
+</script>
+</body>
+</html>

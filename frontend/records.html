@@ -1,0 +1,275 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+<title>Patient Records</title>
+<style>
+body{
+    font-family:Segoe UI, Arial;
+    background:#eef2f5;
+    padding:30px;
+}
+.container{
+    max-width:1200px;
+    margin:auto;
+    background:white;
+    padding:25px;
+    border-radius:12px;
+    box-shadow:0 10px 25px rgba(0,0,0,0.15);
+}
+h2{
+    text-align:center;
+    color:#0b2e4f;
+    margin-bottom:20px;
+}
+.top-bar{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:15px;
+}
+button{
+    padding:10px 18px;
+    border-radius:20px;
+    border:none;
+    background:#1f8acb;
+    color:white;
+    font-weight:600;
+    cursor:pointer;
+}
+.action-btn{
+    padding:6px 15px;
+    border-radius:14px;
+    font-size:12px;
+    margin:2px;
+    border:none;
+    cursor:pointer;
+}
+.edit-btn { background: #ffa500; color: #fff; }
+.delete-btn { background: #e74c3c; color: #fff; }
+table{
+    width:100%;
+    border-collapse:collapse;
+}
+th,td{
+    padding:10px;
+    border:1px solid #ccc;
+    text-align:center;
+    font-size:14px;
+}
+th{
+    background:#1f8acb;
+    color:white;
+}
+</style>
+</head>
+<body>
+<div class="container">
+
+    <div class="top-bar">
+        <h2>📋 Patient Visit Records</h2>
+        <button onclick="goBack()">⬅ Back</button>
+    </div>
+
+    <div style="margin-bottom:20px; display:flex; justify-content:space-between; align-items:center;">
+      <div>
+        <input id="searchBar"
+               placeholder="Search by Name, Disease, Doctor or Phone"
+               style="padding:9px 12px; border-radius:8px; border:1px solid #b8cddd; font-size:15px; width:320px;"/>
+        <button id="exportCSV" style="margin-left:8px;">Export CSV</button>
+        <button id="exportPDF" style="margin-left:8px;">Export PDF</button>
+      </div>
+      <div id="resultCount" style="color:#4f6f88;"></div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Gender</th>
+                <th>Age</th>
+                <th>Disease</th>
+                <th>Priority</th>
+                <th>Time</th>
+                <th>BP</th>
+                <th>Temp</th>
+                <th>Weight</th>
+                <th>Phone</th>
+                <th>Date</th>
+                <th>Doctor</th>
+                <th>Specialization</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+    </table>
+
+</div>
+
+<!-- libs for PDF export -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+
+<script>
+let allPatients = []; // stores data after fetch
+
+async function loadData(){
+    try{
+        const res = await fetch("/patients");
+        const data = await res.json();
+        allPatients = data || [];
+        applyQueryFiltersAndRender();
+    }catch(err){
+        alert("❌ Data load error");
+        console.error(err);
+    }
+}
+
+function highlightText(text, search) {
+    if(!search) return (text || "");
+    const safe = String(search).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(safe, 'ig');
+    return String(text || "").replace(regex, match => `<span style="background:yellow;color:black;">${match}</span>`);
+}
+
+function renderTable(patients, keyword) {
+    const tbody = document.getElementById("tableBody");
+    tbody.innerHTML = "";
+
+    let visibleCount = 0;
+    keyword = (keyword || "").trim();
+
+    patients.forEach(p=>{
+        let fields = [
+            (p.patient_name || ""),
+            (p.disease || ""),
+            (p.doctor_name || ""),
+            (p.phone_number || "")
+        ].join(" ").toLowerCase();
+
+        if(keyword && !fields.includes(keyword.toLowerCase())) return;
+
+        visibleCount++;
+
+        tbody.innerHTML += `
+        <tr>
+            <td>${p.patient_id}</td>
+            <td>${highlightText(p.patient_name || "", keyword)}</td>
+            <td>${p.gender || "-"}</td>
+            <td>${p.age ?? "-"}</td>
+            <td>${highlightText(p.disease || "", keyword)}</td>
+            <td>${p.priority ?? "-"}</td>
+            <td>${p.time_slot ?? "-"}</td>
+            <td>${p.blood_pressure ?? "-"}</td>
+            <td>${p.temperature ?? "-"}</td>
+            <td>${p.weight_kg ?? "-"}</td>
+            <td>${highlightText(p.phone_number || "", keyword)}</td>
+            <td>${ p.visit_date ? new Date(p.visit_date).toLocaleDateString() : '-' }</td>
+            <td>${highlightText(p.doctor_name || "", keyword)}</td>
+            <td>${p.doctor_specialization || "-"}</td>
+            <td>
+                <button class="action-btn edit-btn" onclick="editPatient(${p.patient_id})">Edit</button>
+                <button class="action-btn delete-btn" onclick="deletePatient(${p.patient_id})">Delete</button>
+            </td>
+        </tr>`;
+    });
+
+    if(visibleCount === 0) {
+        tbody.innerHTML = '<tr><td colspan="15" style="color:#c0392b;font-size:16px;"><em>No matching patient records found</em></td></tr>';
+    }
+
+    document.getElementById('resultCount').textContent = `${visibleCount} record(s) shown`;
+}
+
+document.getElementById('searchBar').addEventListener('input', function() {
+    const keyword = this.value;
+    renderTable(allPatients, keyword);
+});
+
+function goBack(){
+    window.location.href = "index.html";
+}
+
+async function deletePatient(id) {
+    if (confirm("Do you want to cancel your appointment?")) {
+        const res = await fetch(`/patients/${id}`, { method: "DELETE" });
+        if (res.ok) {
+            alert("Deleted!");
+            loadData();
+        } else {
+            alert("Delete failed!");
+        }
+    }
+}
+
+async function editPatient(id) {
+    const row = Array.from(document.querySelectorAll('#tableBody tr'))
+      .find(r => r.firstElementChild && Number(r.firstElementChild.textContent) === id);
+
+    if (!row) { alert("Row not found!"); return; }
+    const editData = {
+        patient_id: row.children[0].textContent,
+        patient_name: row.children[1].textContent.replace(/<[^>]+>/g, ""), // strip highlight
+        gender: row.children[2].textContent,
+        age: row.children[3].textContent,
+        disease: row.children[4].textContent.replace(/<[^>]+>/g, ""),
+        priority: row.children[5].textContent,
+        time_slot: row.children[6].textContent,
+        blood_pressure: row.children[7].textContent,
+        temperature: row.children[8].textContent,
+        weight_kg: row.children[9].textContent,
+        phone_number: row.children[10].textContent.replace(/<[^>]+>/g, "")
+    };
+    localStorage.setItem("editPatientData", JSON.stringify(editData));
+    window.location.href = "index.html?edit=1";
+}
+
+/* Apply query params (from dashboard) and render */
+function applyQueryFiltersAndRender() {
+    const params = new URLSearchParams(location.search);
+    const month = params.get('month'); // format YYYY-MM
+    const gender = params.get('gender');
+    const disease = params.get('disease');
+    let list = allPatients.slice();
+
+    if (month) {
+      list = list.filter(p => p.visit_date && String(p.visit_date).slice(0,7) === month);
+    }
+    if (gender) list = list.filter(p => (p.gender||'').toLowerCase() === gender.toLowerCase());
+    if (disease) list = list.filter(p => (p.disease||'').toLowerCase() === disease.toLowerCase());
+
+    renderTable(list, document.getElementById('searchBar').value || '');
+}
+
+/* Exports */
+document.getElementById('exportCSV').addEventListener('click', () => {
+    const rows = Array.from(document.querySelectorAll('#tableBody tr')).map(tr =>
+      Array.from(tr.querySelectorAll('td')).slice(0,13).map(td => td.textContent.trim())
+    );
+    const header = ['ID','Name','Gender','Age','Disease','Priority','Time','BP','Temp','Weight','Phone','Date','Doctor'];
+    const csv = [header.join(','), ...rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = 'patients.csv'; a.click();
+    URL.revokeObjectURL(url);
+});
+
+document.getElementById('exportPDF').addEventListener('click', async () => {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF('landscape', 'pt', 'a4');
+    const rows = Array.from(document.querySelectorAll('#tableBody tr')).map(tr =>
+      Array.from(tr.querySelectorAll('td')).slice(0,13).map(td => td.textContent.trim())
+    );
+    doc.autoTable({
+      head: [['ID','Name','Gender','Age','Disease','Priority','Time','BP','Temp','Weight','Phone','Date','Doctor']],
+      body: rows,
+      startY: 20,
+      styles: { fontSize: 8 }
+    });
+    doc.save('patients.pdf');
+});
+
+loadData();
+</script>
+</body>
+</html>
